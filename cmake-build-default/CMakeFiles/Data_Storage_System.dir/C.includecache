@@ -1,0 +1,42 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+D:/DevelopmentWorkspace/Data-Storage-System/display.h
+stdlib.h
+-
+stdio.h
+-
+Windows.h
+-
+
+D:/DevelopmentWorkspace/Data-Storage-System/main.c
+shlobj.h
+-
+Commdlg.h
+-
+display.h
+D:/DevelopmentWorkspace/Data-Storage-System/display.h
+utility.h
+D:/DevelopmentWorkspace/Data-Storage-System/utility.h
+
+D:/DevelopmentWorkspace/Data-Storage-System/utility.h
+stdlib.h
+-
+conio.h
+-
+stdio.h
+-
+varchar.h
+D:/DevelopmentWorkspace/Data-Storage-System/varchar.h
+
+D:/DevelopmentWorkspace/Data-Storage-System/varchar.h
+string.h
+-
+utility.h
+D:/DevelopmentWorkspace/Data-Storage-System/utility.h
+
