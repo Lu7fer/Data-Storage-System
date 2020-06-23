@@ -34,17 +34,17 @@ If not, see <http: //www.gnu.org/licenses/>.
 
 #endif
 /**
-0 = é»‘è‰²       8 = ç°è‰²
-1 = è“è‰²       9 = æ·¡è“è‰²
-2 = ç»¿è‰²       A = æ·¡ç»¿è‰²
-3 = æµ…ç»¿è‰²     B = æ·¡æµ…ç»¿è‰²
-4 = çº¢è‰²       C = æ·¡çº¢è‰²
-5 = ç´«è‰²       D = æ·¡ç´«è‰²
-6 = é»„è‰²       E = æ·¡é»„è‰²
-7 = ç™½è‰²       F = äº®ç™½è‰²
+0 = ºÚÉ«       8 = »ÒÉ«
+1 = À¶É«       9 = µ­À¶É«
+2 = ÂÌÉ«       A = µ­ÂÌÉ«
+3 = Ç³ÂÌÉ«     B = µ­Ç³ÂÌÉ«
+4 = ºìÉ«       C = µ­ºìÉ«
+5 = ×ÏÉ«       D = µ­×ÏÉ«
+6 = »ÆÉ«       E = µ­»ÆÉ«
+7 = °×É«       F = ÁÁ°×É«
 */
 
-/*æ˜¾ç¤ºç›¸å…³*/
+/*ÏÔÊ¾Ïà¹Ø*/
 #define ALERT "COLOR CF"
 #define NORMAL "COLOR 2E"
 #define CLEAN_SCR "cls"
@@ -90,8 +90,8 @@ oooooo   oooooo     oooo           oooo
 #define WINDOW_COLS 120
 #define WINDOW_LINES 30
 
-HANDLE handle_out;               //å®šä¹‰ä¸€ä¸ªå¥æŸ„
-CONSOLE_SCREEN_BUFFER_INFO scbi; //å®šä¹‰ä¸€ä¸ªçª—å£ç¼“å†²åŒºä¿¡æ¯ç»“æ„ä½“
+HANDLE handle_out;               //¶¨ÒåÒ»¸ö¾ä±ú
+CONSOLE_SCREEN_BUFFER_INFO scbi; //¶¨ÒåÒ»¸ö´°¿Ú»º³åÇøĞÅÏ¢½á¹¹Ìå
 
 /*
  * update scbi
@@ -106,7 +106,7 @@ void init()
     }
     GetConsoleScreenBufferInfo(handle_out, &scbi);
 
-    //!   CloseHandle(handle_out); //å…³é—­æ ‡å‡†è¾“å‡ºè®¾å¤‡å¥æŸ„
+    //!   CloseHandle(handle_out); //¹Ø±Õ±ê×¼Êä³öÉè±¸¾ä±ú
 }
 
 void dss_draw_line()
@@ -148,7 +148,7 @@ void dss_reset_window()
     init();
     if (scbi.dwSize.X < WINDOW_LINES && scbi.dwSize.Y < WINDOW_COLS)
     {
-        // SMALL_RECT rc = {1, 1, 120 - 1, 40 - 1}; // é‡ç½®çª—å£ä½ç½®å’Œå¤§å°
+        // SMALL_RECT rc = {1, 1, 120 - 1, 40 - 1}; // ÖØÖÃ´°¿ÚÎ»ÖÃºÍ´óĞ¡
         // SetConsoleWindowInfo(handle_out, 1, &rc);
         char s[40];
         sprintf(s, "mode con cols=%d lines=%d", WINDOW_COLS, WINDOW_LINES);
@@ -159,22 +159,22 @@ void dss_reset_window()
 
 void dss_set_title(char *title)
 {
-    //è®¾ç½®çª—å£æ ‡é¢˜ä¸ºâ€œæ§åˆ¶å°çª—å£æ“ä½œâ€
+    //ÉèÖÃ´°¿Ú±êÌâÎª¡°¿ØÖÆÌ¨´°¿Ú²Ù×÷¡±
     SetConsoleTitle((LPCSTR)title);
 }
 
 void dss_get_title(char *title, u_int n)
-{ //è·å¾—å½“å‰çª—å£æ ‡é¢˜
+{ //»ñµÃµ±Ç°´°¿Ú±êÌâ
     GetConsoleTitle((LPSTR)title, n);
 }
 
 /**
- **ä» stdio.h æŠ„ä¸€ç‚¹æºç ,
- **ç¨‹åºå¯èƒ½ä¼šå¿«ä¸€ç‚¹
+ **´Ó stdio.h ³­Ò»µãÔ´Âë,
+ **³ÌĞò¿ÉÄÜ»á¿ìÒ»µã
 */
 void dss_println(const char *__format, ...)
 {
-    //ä¸¢æ‰__mingw_vfprintfè¿”å›å€¼,æœ¬æ¥ä¹Ÿæ²¡æ‰“ç®—ç”¨
+    //¶ªµô__mingw_vfprintf·µ»ØÖµ,±¾À´Ò²Ã»´òËãÓÃ
     __builtin_va_list __local_argv;
     __builtin_va_start(__local_argv, __format);
     __mingw_vfprintf(stdout, __format, __local_argv);
@@ -192,14 +192,14 @@ void dss_colored_putln(char *out, const int color)
 }
 
 /**
-0 = é»‘è‰²       8 = ç°è‰²
-1 = è“è‰²       9 = æ·¡è“è‰²
-2 = ç»¿è‰²       A = æ·¡ç»¿è‰²
-3 = æµ…ç»¿è‰²     B = æ·¡æµ…ç»¿è‰²
-4 = çº¢è‰²       C = æ·¡çº¢è‰²
-5 = ç´«è‰²       D = æ·¡ç´«è‰²
-6 = é»„è‰²       E = æ·¡é»„è‰²
-7 = ç™½è‰²       F = äº®ç™½è‰²
+0 = ºÚÉ«       8 = »ÒÉ«
+1 = À¶É«       9 = µ­À¶É«
+2 = ÂÌÉ«       A = µ­ÂÌÉ«
+3 = Ç³ÂÌÉ«     B = µ­Ç³ÂÌÉ«
+4 = ºìÉ«       C = µ­ºìÉ«
+5 = ×ÏÉ«       D = µ­×ÏÉ«
+6 = »ÆÉ«       E = µ­»ÆÉ«
+7 = °×É«       F = ÁÁ°×É«
 */
 void dss_colored_put(char *out, const int color)
 {

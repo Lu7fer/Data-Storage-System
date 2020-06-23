@@ -15,10 +15,6 @@ Windows.h
 -
 
 D:/DevelopmentWorkspace/Data-Storage-System/main.c
-shlobj.h
--
-Commdlg.h
--
 display.h
 D:/DevelopmentWorkspace/Data-Storage-System/display.h
 utility.h
@@ -30,6 +26,8 @@ stdlib.h
 conio.h
 -
 stdio.h
+-
+shlobj.h
 -
 varchar.h
 D:/DevelopmentWorkspace/Data-Storage-System/varchar.h

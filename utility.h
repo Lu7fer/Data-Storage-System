@@ -30,36 +30,38 @@ typedef unsigned int u_int;
 #endif /* stdlib.h */
 
 #ifndef _INC_CONIN
+
 #include <conio.h>
+
 #endif /* conio.h */
 
 #ifndef _INC_STDIO
 #include <stdio.h>
 #endif /* stdio.h */
 
+#ifndef _SHLOBJ_H_
+#include <shlobj.h>
+#endif
+
 /**
-  * @param message è¦è¾“å‡ºçš„æç¤º
-  * @param str è·å–çš„å­—ç¬¦ä¸²
-  * @param len_of_str å­—ç¬¦ä¸²é•¿åº¦
+  * @param message ÒªÊä³öµÄÌáÊ¾
+  * @param str »ñÈ¡µÄ×Ö·û´®
+  * @param len_of_str ×Ö·û´®³¤¶È
  */
-char *dss_gets_invisible(char *massage, char *str, u_int len_of_str)
-{
+char *dss_gets_invisible(char *massage, char *str, u_int len_of_str) {
     puts(massage);
     u_int position = 0;
     char get;
-    while ((get = getch()) != '\n')
-    {
-        /*è·å–åˆ°é€€æ ¼*/
-        if (get == '\b')
-        {
-            if (position > 0)
-            {
+    while ((get = getch()) != '\n') {
+        /*»ñÈ¡µ½ÍË¸ñ*/
+        if (get == '\b') {
+            if (position > 0) {
                 position--;
                 continue;
             }
             continue;
         }
-        /*è¶…è¿‡ç¼“å†²åŒº*/
+        /*³¬¹ı»º³åÇø*/
         if (position >= len_of_str - 1)
             continue;
         str[position] = get;
@@ -70,20 +72,20 @@ char *dss_gets_invisible(char *massage, char *str, u_int len_of_str)
 }
 
 #ifndef _VARCHER
+
 #include "varchar.h"
+
 #endif
 
-void dss_clean()
-{
-    CloseHandle(handle_out); //å…³é—­æ ‡å‡†è¾“å‡ºè®¾å¤‡å¥æŸ„
+void dss_clean() {
+    CloseHandle(handle_out); //¹Ø±Õ±ê×¼Êä³öÉè±¸¾ä±ú
     handle_out = NULL;
 #ifdef DSS_DEBUG
     system("pause");
 #endif
 }
 
-varchar_t *dss_set_attr(const char *key, const char *value)
-{
+varchar_t *dss_set_attr(const char *key, const char *value) {
     u_int len;
     varchar_t *xml;
     len = strlen(value) + strlen(key) * 2;
@@ -103,17 +105,15 @@ varchar_t *dss_set_attr(const char *key, const char *value)
 #define U_LONG_LONG "%llu"
 
 /**
- * @param str éœ€è¦è¯»å–çš„å­—ç¬¦ä¸²
- * @param key å±æ€§key
- * @param value è¯»åˆ°çš„å€¼
+ * @param str ĞèÒª¶ÁÈ¡µÄ×Ö·û´®
+ * @param key ÊôĞÔkey
+ * @param value ¶Áµ½µÄÖµ
 */
-int dss_get_attr(const char *str, const char *key, varchar_t *value)
-{
+int dss_get_attr(const char *str, const char *key, varchar_t *value) {
     //<key>%s</key>
     varchar_t *format = dss_new_string(strlen(key) * 2 + 10);
     sprintf(format->string, "<%s>%%s</%s>", key, key);
-    if (value->capacity < (strlen(str) - 7))
-    {
+    if (value->capacity < (strlen(str) - 7)) {
         dss_free_string(value);
         value = dss_new_string(strlen(str));
     }
@@ -123,7 +123,7 @@ int dss_get_attr(const char *str, const char *key, varchar_t *value)
 }
 
 /**
- *  ä¸Š 224 72  ä¸‹  224 80 å·¦  224 75 å³ 224 77
+ *  ÉÏ 224 72  ÏÂ  224 80 ×ó  224 75 ÓÒ 224 77
  *  Ctrla-z 1-26
  *  F1-F10 0 59 - 0 68 F11-F12  224 133 224 134
 */
@@ -134,30 +134,56 @@ int dss_get_attr(const char *str, const char *key, varchar_t *value)
 #define LEFT 0xE04B
 
 /**
- * é‡‡é›†è¾“å…¥
+ * ²É¼¯ÊäÈë
 */
-short dss_get_input()
-{
+short dss_get_input() {
     short in = getch();
     char next;
-    switch (in)
-    {
-    case 0:
-        in <<= 8;
-        break;
-    case 0xE0:
-        in <<= 8;
-        switch (next = getch())
-        {
-        case 0x48:
-        case 0x4B:
-        case 0x4D:
-        case 0x50:
-            in += next;
+    switch (in) {
+        case 0:
+            in <<= 8;
             break;
-        default:
-            break;
-        }
+        case 0xE0:
+            in <<= 8;
+            switch (next = getch()) {
+                case 0x48:
+                case 0x4B:
+                case 0x4D:
+                case 0x50:
+                    in += next;
+                    break;
+                default:
+                    break;
+            }
     }
     return in;
+}
+
+
+/**
+ * µ÷³öÆÕÍ¨µÄÎÄ¼şÑ¡Ôñ´°¿Ú
+ *@param path : file path
+ *@param length >=500
+ */
+char *dss_select_file(char *path, u_int length) {
+    OPENFILENAME open;// ¹«¹²¶Ô»°¿ò½á¹¹¡£
+//    char path[MAX_PATH];// ÓÃÀ´±£´æ»ñÈ¡ÎÄ¼şÃû³ÆµÄ»º³åÇø¡£
+    ZeroMemory(&open, sizeof(OPENFILENAME)); // ³õÊ¼»¯Ñ¡ÔñÎÄ¼ş¶Ô»°¿ò
+    open.lStructSize = sizeof(OPENFILENAME);//Ö¸¶¨Õâ¸ö½á¹¹µÄ´óĞ¡£¬ÒÔ×Ö½ÚÎªµ¥Î»¡£
+    open.lpstrFile = path;//´ò¿ªµÄÎÄ¼şµÄÈ«Â·¾¶
+    open.lpstrFile[0] = '\0'; //µÚÒ»¸ö×Ö·û´®ÊÇ¹ıÂËÆ÷ÃèÊöµÄÏÔÊ¾×Ö·û´®
+    open.nMaxFile = length;  //Ö¸¶¨lpstrFile»º³åµÄ´óĞ¡£¬ÒÔTCHARsÎªµ¥Î»
+    open.lpstrFilter = "Êı¾İÎÄ¼ş(*.dss)\0*.dss\0ËùÓĞÎÄ¼ş(*.*)\0*.*\0\0";  //´ò¿ªÎÄ¼şÀàĞÍ
+    open.nFilterIndex = 1;  //Ö¸¶¨ÔÚÎÄ¼şÀàĞÍ¿Ø¼şÖĞµ±Ç°Ñ¡ÔñµÄ¹ıÂËÆ÷µÄË÷Òı
+    open.lpstrFileTitle = NULL; // Ö¸Ïò½ÓÊÕÑ¡ÔñµÄÎÄ¼şµÄÎÄ¼şÃûºÍÀ©Õ¹ÃûµÄ»º³å£¨²»´øÂ·¾¶ĞÅÏ¢£©¡£Õâ¸ö³ÉÔ±¿ÉÒÔÊÇNULL¡£
+    open.nMaxFileTitle = 0;  //Ö¸¶¨lpstrFileTitle»º³åµÄ´óĞ¡£¬ÒÔTCHARsÎªµ¥Î»
+    open.lpstrInitialDir = NULL;  //Ö¸ÏòÒÔ¿Õ×Ö·û½áÊøµÄ×Ö·û´®£¬¿ÉÒÔÔÚÕâ¸ö×Ö·û´®ÖĞÖ¸¶¨³õÊ¼Ä¿Â¼¡£
+    open.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;//Î»±ê¼ÇµÄÉèÖÃ£¬Äã¿ÉÒÔÊ¹ÓÃÀ´³õÊ¼»¯¶Ô»°¿ò
+    //GetOpenFileName (&open) ;//´ò¿ªÎÄ¼ş¶Ô»°¿ò
+    //GetSaveFileName(&open);//±£´æÎÄ¼ş¶Ô»°¿ò
+    if (GetOpenFileName(&open))  // ÏÔÊ¾´ò¿ªÑ¡ÔñÎÄ¼ş¶Ô»°¿ò¡£
+    {
+        return path;
+    }
+    return NULL;
 }
