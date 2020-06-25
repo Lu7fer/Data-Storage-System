@@ -187,3 +187,32 @@ char *dss_select_file(char *path, u_int length) {
     }
     return NULL;
 }
+
+
+
+char *dss_password_gets(char *passwd, u_int size) {
+    u_int i = 0;
+    for (;;) {
+        switch (passwd[i] = getch()) {
+            case '\b':
+                if (i == 0)
+                    break;
+                --i;
+                break;
+            case '\n':
+                passwd[i] = '\0';
+                return passwd;
+            default: {
+                /**除去ascii不可打印字符*/
+                if (passwd[i] > 0x20 && passwd[i] < 0x7F) {
+                    if (i < size - 1) {
+                        ++i;
+                        break;
+                    } else {
+                        dss_colored_put("你输入太多啦", ALERT_TEXT);
+                    }
+                }
+            }
+        }
+    }
+}

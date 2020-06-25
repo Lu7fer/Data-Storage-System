@@ -76,6 +76,9 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="D:/DevelopmentWorkspace/Data-Storage-System/dataio.h">
+			<Option target="Data_Storage_System"/>
+		</Unit>
 		<Unit filename="D:/DevelopmentWorkspace/Data-Storage-System/display.h">
 			<Option target="Data_Storage_System"/>
 		</Unit>

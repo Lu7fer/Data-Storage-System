@@ -48,7 +48,7 @@ If not, see <http: //www.gnu.org/licenses/>.
 #define ALERT "COLOR CF"
 #define NORMAL "COLOR 2E"
 #define CLEAN_SCR "cls"
-
+#define ALERT_TEXT 0x24
 void dss_set_bgcolor(char *bg)
 {
     system(bg);
@@ -155,7 +155,7 @@ void dss_reset_window()
         system(s);
     }
 }
-//! TODO
+
 
 void dss_set_title(char *title)
 {

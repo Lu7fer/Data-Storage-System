@@ -20,7 +20,7 @@ If not, see <http: //www.gnu.org/licenses/>.
  */
 
 // #define DSS_DEBUG
-//#define DSS_DEBUG
+#define DSS_DEBUG
 
 #ifndef _DISPLAY
 
@@ -34,7 +34,7 @@ If not, see <http: //www.gnu.org/licenses/>.
 
 #endif
 
-#define ALERT_TEXT 0x24
+
 
 #define ADMIN '1'
 #define USER '2'
@@ -46,7 +46,7 @@ char has_data_file;
 
 /*数据*/
 varchar_t *data;
-char *file_position;
+char *file_path;
 #define FILE_POSITION_SIZE 500
 
 
@@ -84,16 +84,16 @@ int main(int argc, char const *argv[]) {
                 }
             } else {
                 dss_set_title("文件读取失败");
-                file_position = (char *) malloc(FILE_POSITION_SIZE);
+                file_path = (char *) malloc(FILE_POSITION_SIZE);
                 dss_colored_put("\r默认位置没有数据文件,是否手动指定?(y:yes / n:no)\n", ALERT_TEXT);
                 file_select:
                 switch (getch()) {// TODO ->
                     case 'n': {
                         if (user == USER) {
                             dss_colored_put("您是普通用户,请指定数据文件!", ALERT_TEXT);
-                            dss_select_file(file_position, FILE_POSITION_SIZE);
-                            //TODO
-                            printf(file_position);
+                            dss_select_file(file_path, FILE_POSITION_SIZE);
+                            //TODO 文件读取
+                            printf(file_path);
                             has_data_file = HAVE_DATA_FILE;
                         }
                         has_data_file = NO_DATA_FILE;
@@ -101,9 +101,9 @@ int main(int argc, char const *argv[]) {
                     }
                     case 'y': {
 
-                        dss_select_file(file_position, FILE_POSITION_SIZE);
-                        //TODO
-                        printf(file_position);
+                        dss_select_file(file_path, FILE_POSITION_SIZE);
+                        //TODO 文件读取
+                        printf(file_path);
                         has_data_file = HAVE_DATA_FILE;
                         break;
                     }
@@ -129,5 +129,15 @@ int main(int argc, char const *argv[]) {
 
 #endif
 
-//Print_Data()、Count_score()、Input_Data()、Manager()
+#ifdef DSS_DEBUG
+
+int main(int argc, const char **argv) {
+    dss_set_bgcolor(NORMAL);
+    for (;;) {
+        putchar(getch());
+    }
+}
+
+#endif
+
 
