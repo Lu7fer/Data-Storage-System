@@ -40,7 +40,9 @@ typedef unsigned int u_int;
 #endif /* stdio.h */
 
 #ifndef _SHLOBJ_H_
+
 #include <shlobj.h>
+
 #endif
 
 /**
@@ -85,46 +87,9 @@ void dss_clean() {
 #endif
 }
 
-varchar_t *dss_set_attr(const char *key, const char *value) {
-    u_int len;
-    varchar_t *xml;
-    len = strlen(value) + strlen(key) * 2;
-    xml = dss_new_string(len + 16);
-    sprintf(xml->string, "<%s>  %s  </%s>\n", key, value, key);
-    return xml;
-}
-
-#define INT "%d"
-#define LONG_LONG "%ld"
-#define FLOAT "%f"
-#define DOUBLE "%lf"
-#define STRING "%s"
-#define CHAR "%c"
-#define BOOLEAN "bool"
-#define U_INT "%u"
-#define U_LONG_LONG "%llu"
-
-/**
- * @param str 需要读取的字符串
- * @param key 属性key
- * @param value 读到的值
-*/
-int dss_get_attr(const char *str, const char *key, varchar_t *value) {
-    //<key>%s</key>
-    varchar_t *format = dss_new_string(strlen(key) * 2 + 10);
-    sprintf(format->string, "<%s>%%s</%s>", key, key);
-    if (value->capacity < (strlen(str) - 7)) {
-        dss_free_string(value);
-        value = dss_new_string(strlen(str));
-    }
-    int rtn = sscanf(str, format->string, value);
-    dss_free_string(format);
-    return rtn;
-}
-
 /**
  *  上 224 72  下  224 80 左  224 75 右 224 77
- *  Ctrla-z 1-26
+ *  Ctrl a-z 1-26
  *  F1-F10 0 59 - 0 68 F11-F12  224 133 224 134
 */
 
@@ -133,39 +98,63 @@ int dss_get_attr(const char *str, const char *key, varchar_t *value) {
 #define RIGHT 0xE04D
 #define LEFT 0xE04B
 
-/**
- * 采集输入
-*/
-short dss_get_input() {
-    short in = getch();
-    char next;
-    switch (in) {
-        case 0:
-            in <<= 8;
-            break;
+short dss_get_control() {
+    short control = 0;
+    switch (control = getch()) {
         case 0xE0:
-            in <<= 8;
-            switch (next = getch()) {
-                case 0x48:
-                case 0x4B:
-                case 0x4D:
-                case 0x50:
-                    in += next;
-                    break;
-                default:
-                    break;
-            }
+            control <<= 8;
+            break;
+        default:
+            return control;
     }
-    return in;
+    return control | getch();
 }
 
 
 /**
- * 调出普通的文件选择窗口
- *@param path : file path
- *@param length >=500
+ * 采集输入
+*/
+char *dss_get_input(char *inputs, u_int size) {
+    u_int i = 0;
+    for (;;) {
+        switch (inputs[i] = getche()) {
+            case '\b':
+                if (i == 0)
+                    break;
+                --i;
+                break;
+            case '\n':
+                inputs[i] = '\0';
+                return inputs;
+            default: {
+                /**除去ascii不可打印字符*/
+                if (inputs[i] > 0x20 && inputs[i] < 0x7F) {
+                    if (i < size - 1) {
+                        ++i;
+                        break;
+                    } else {
+                        COORD position = dss_get_cursor_location();
+                        COORD output = dss_get_window_size();
+                        output.X = 0;
+                        SetConsoleCursorPosition(handle_out, output);
+                        dss_colored_put("你输入太多啦", ALERT_TEXT);
+                        SetConsoleCursorPosition(handle_out, position);
+                    }
+                }
+                if (inputs[i] == 0xE0) { getch(); }
+            }
+        }
+    }
+}
+
+
+/**
+ * 调出Windows的文件选择窗口
+ * @param path : file path
+ * @param length >=500
+ * @param method : o open file , s save file
  */
-char *dss_select_file(char *path, u_int length) {
+char *dss_select_file(char *path, u_int length, char method) {
     OPENFILENAME open;// 公共对话框结构。
 //    char path[MAX_PATH];// 用来保存获取文件名称的缓冲区。
     ZeroMemory(&open, sizeof(OPENFILENAME)); // 初始化选择文件对话框
@@ -173,7 +162,10 @@ char *dss_select_file(char *path, u_int length) {
     open.lpstrFile = path;//打开的文件的全路径
     open.lpstrFile[0] = '\0'; //第一个字符串是过滤器描述的显示字符串
     open.nMaxFile = length;  //指定lpstrFile缓冲的大小，以TCHARs为单位
+//    if (type == 'd')
     open.lpstrFilter = "数据文件(*.dss)\0*.dss\0所有文件(*.*)\0*.*\0\0";  //打开文件类型
+//    else if (type == 'p')
+//        open.lpstrFilter = "密码文件(*.pw)\0*.pw\0所有文件(*.*)\0*.*\0\0";
     open.nFilterIndex = 1;  //指定在文件类型控件中当前选择的过滤器的索引
     open.lpstrFileTitle = NULL; // 指向接收选择的文件的文件名和扩展名的缓冲（不带路径信息）。这个成员可以是NULL。
     open.nMaxFileTitle = 0;  //指定lpstrFileTitle缓冲的大小，以TCHARs为单位
@@ -181,13 +173,16 @@ char *dss_select_file(char *path, u_int length) {
     open.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;//位标记的设置，你可以使用来初始化对话框
     //GetOpenFileName (&open) ;//打开文件对话框
     //GetSaveFileName(&open);//保存文件对话框
-    if (GetOpenFileName(&open))  // 显示打开选择文件对话框。
-    {
-        return path;
-    }
+    if (method == 'o')
+        if (GetOpenFileName(&open))  // 显示打开选择文件对话框。
+            return path;
+
+    if (method == 's')
+        if (GetSaveFileName(&open))
+            return path;
+
     return NULL;
 }
-
 
 
 char *dss_password_gets(char *passwd, u_int size) {
@@ -209,10 +204,17 @@ char *dss_password_gets(char *passwd, u_int size) {
                         ++i;
                         break;
                     } else {
+                        COORD position = dss_get_cursor_location();
+                        COORD output = dss_get_window_size();
+                        output.X = 0;
+                        SetConsoleCursorPosition(handle_out, output);
                         dss_colored_put("你输入太多啦", ALERT_TEXT);
+                        SetConsoleCursorPosition(handle_out, position);
                     }
                 }
             }
         }
     }
 }
+
+

@@ -137,6 +137,79 @@ list_t *dss_remove_item(list_t *list, item_t *item) {
     return list;
 }
 
-list_t *dss_parse(char *data) {
 
+varchar_t *dss_save_attr(const char *key, const char *value) {
+    u_int len;
+    varchar_t *xml;
+    len = strlen(value) + strlen(key) * 2;
+    xml = dss_new_string(len + 16);
+    sprintf(xml->string, "<%s>  %s  </%s>\n", key, value, key);
+    return xml;
+}
+
+/**
+#define INT "%d"
+#define LONG_LONG "%ld"
+#define FLOAT "%f"
+#define DOUBLE "%lf"
+#define STRING "%s"
+#define CHAR "%c"
+#define BOOLEAN "bool"
+#define U_INT "%u"
+#define U_LONG_LONG "%llu"
+*/
+/**
+ * @param str 需要读取的字符串
+ * @param key 属性key
+ * @param value 读到的值
+*/
+int dss_get_attr(const char *str, const char *key, varchar_t *value) {
+    //<key>%s</key>
+    varchar_t *format = dss_new_string(strlen(key) * 2 + 10);
+    sprintf(format->string, "<%s>%%s</%s>", key, key);
+    if (value->capacity < (strlen(str) - 7)) {
+        dss_free_string(value);
+        value = dss_new_string(strlen(str));
+    }
+    int rtn = sscanf(str, format->string, value);
+    dss_free_string(format);
+    return rtn;
+}
+
+
+/**
+ * 查找标签 example: to find <target> xxx </target> ,just set *target "target"
+ * @param data 被查找的数据
+ * @param target 目标标签
+ * */
+varchar_t *dss_parse_target(char *target, FILE *fp) {
+    const int MAX_LENGTH = 0x100000;// 1024*1024=1048576
+    u_int capacity = 0x100;
+    varchar_t *target_tmpl = dss_new_string(strlen(target) + 5);
+    sprintf(target_tmpl->string, "</%s>", target);
+    varchar_t *tmp = dss_new_string(capacity);
+    while (1) {
+        if (fgets(tmp->string, tmp->capacity, fp)) {
+            if (capacity >= MAX_LENGTH)
+                return NULL;
+            dss_free_string(tmp);
+            if (strcmp(tmp->string + (strlen(tmp->string) - strlen(target_tmpl)), target_tmpl->string))
+                break;
+            tmp = dss_new_string(capacity << 1);
+        } else {
+            return NULL;
+        }
+    }
+    varchar_t *rtn = dss_new_string(strlen(tmp->string) + 2);
+    strcpy(rtn->string, tmp->string);
+    dss_free_string(target_tmpl);
+    dss_free_string(tmp);
+    return rtn;
+}
+
+list_t *dss_parse(char *root_tag, FILE *fp) {
+    varchar_t *to_parse;
+    if (to_parse = dss_parse_target(root_tag, fp)) {
+        
+    }
 }

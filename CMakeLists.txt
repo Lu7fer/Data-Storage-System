@@ -9,4 +9,4 @@ add_executable(Data_Storage_System
         display.h
         main.c
         utility.h
-        varchar.h dataio.h)
+        varchar.h dataio_xml_type.h io_structure.h io_no_exception.h)

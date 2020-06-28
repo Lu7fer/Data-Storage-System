@@ -48,14 +48,16 @@ If not, see <http: //www.gnu.org/licenses/>.
 #define ALERT "COLOR CF"
 #define NORMAL "COLOR 2E"
 #define CLEAN_SCR "cls"
+
+#define NORMAL_TEXT 0x2E
 #define ALERT_TEXT 0x24
-void dss_set_bgcolor(char *bg)
-{
+#define DISABLE_TEXT 0x28
+
+void dss_set_global_color(char *bg) {
     system(bg);
 }
 
-void dss_cls()
-{
+void dss_cls() {
     system(CLEAN_SCR);
 }
 
@@ -65,8 +67,9 @@ void dss_cls()
 
 #endif
 
-void dss_blink()
-{
+COORD dss_get_cursor_location();
+
+void dss_blink() {
 
     system(ALERT);
     Sleep(50);
@@ -87,6 +90,7 @@ oooooo   oooooo     oooo           oooo
       `8'      `8'       `Y8bod8P' o888o `Y8bod8P' `Y8bod8P' o888o o888o o888o `Y8bod8P' 
 */
 #define WELCOME_LINES 7
+#define THINKS_LINES 6
 #define WINDOW_COLS 120
 #define WINDOW_LINES 30
 
@@ -96,11 +100,9 @@ CONSOLE_SCREEN_BUFFER_INFO scbi; //定义一个窗口缓冲区信息结构体
 /*
  * update scbi
 */
-void init()
-{
+void init() {
     static int flag = 1;
-    if (flag)
-    {
+    if (flag) {
         handle_out = GetStdHandle(STD_OUTPUT_HANDLE);
         flag = 0;
     }
@@ -109,12 +111,11 @@ void init()
     //!   CloseHandle(handle_out); //关闭标准输出设备句柄
 }
 
-void dss_draw_line()
-{
+void dss_draw_line() {
     init();
-    fputc('\n', stdout);
-    for (size_t i = 0; i < scbi.dwSize.X - 1; i++)
-    {
+    if (dss_get_cursor_location().X!=0)
+        fputc('\n', stdout);
+    for (size_t i = 0; i < scbi.dwSize.X - 1; i++) {
         fputc('-', stdout);
     }
     fputc('\n', stdout);
@@ -125,55 +126,98 @@ void dss_draw_line()
  *  ascii code draw
 */
 char *_dss_welcome[] = {
-    "   oooooo   oooooo     oooo           oooo                                                  ",
-    "    `888.    `888.     .8'            `888                                                  ",
-    "     `888.   .8888.   .8'    .ooooo.   888   .ooooo.   .ooooo.  ooo. .oo.  .oo.    .ooooo.  ",
-    "      `888  .8'`888. .8'    d88' `88b  888  d88' `'Y8 d88 '`88b `888P'Y88bP'Y88b  d88' `88b ",
-    "       `888.8'  `888.8'     888ooo888  888  888       888   888  888   888   888  888ooo888 ",
-    "        `888'    `888'      888    .o  888  888   .o8 888   888  888   888   888  888    .o ",
-    "         `8'      `8'       `Y8bod8P' o888o `Y8bod8P' `Y8bod8P' o888o o888o o888o `Y8bod8P' "};
+        "   oooooo   oooooo     oooo           oooo                                                  ",
+        "    `888.    `888.     .8'            `888                                                  ",
+        "     `888.   .8888.   .8'    .ooooo.   888   .ooooo.   .ooooo.  ooo. .oo.  .oo.    .ooooo.  ",
+        "      `888  .8'`888. .8'    d88' `88b  888  d88' `'Y8 d88 '`88b `888P'Y88bP'Y88b  d88' `88b ",
+        "       `888.8'  `888.8'     888ooo888  888  888       888   888  888   888   888  888ooo888 ",
+        "        `888'    `888'      888    .o  888  888   .o8 888   888  888   888   888  888    .o ",
+        "         `8'      `8'       `Y8bod8P' o888o `Y8bod8P' `Y8bod8P' o888o o888o o888o `Y8bod8P' "};
 
-void dss_welcome()
-{
+void dss_welcome() {
+    dss_cls();
     dss_draw_line();
-    for (size_t i = 0; i < WELCOME_LINES; i++)
-    {
+    for (size_t i = 0; i < WELCOME_LINES; i++) {
         puts(_dss_welcome[i]);
     }
     dss_draw_line();
 }
 
-void dss_reset_window()
-{
-    init();
-    if (scbi.dwSize.X < WINDOW_LINES && scbi.dwSize.Y < WINDOW_COLS)
-    {
-        // SMALL_RECT rc = {1, 1, 120 - 1, 40 - 1}; // 重置窗口位置和大小
-        // SetConsoleWindowInfo(handle_out, 1, &rc);
-        char s[40];
-        sprintf(s, "mode con cols=%d lines=%d", WINDOW_COLS, WINDOW_LINES);
-        system(s);
+/**
+
+.___________. __    __       ___      .__   __.  __  ___      _______.
+|           ||  |  |  |     /   \     |  \ |  | |  |/  /     /       |
+`---|  |----`|  |__|  |    /  ^  \    |   \|  | |  '  /     |   (----`
+    |  |     |   __   |   /  /_\  \   |  . `  | |    <       \   \
+    |  |     |  |  |  |  /  _____  \  |  |\   | |  .  \  .----)   |
+    |__|     |__|  |__| /__/     \__\ |__| \__| |__|\__\ |_______/
+
+ */
+char *_dss_thanks[] = {
+        "   .___________. __    __       ___      .__   __.  __  ___      _______. ",
+        "   |           ||  |  |  |     /   \\     |  \\ |  | |  |/  /     /       | ",
+        "   `---|  |----`|  |__|  |    /  ^  \\    |   \\|  | |  '  /     |   (----` ",
+        "       |  |     |   __   |   /  /_\\  \\   |  . `  | |    <       \\   \\ ",
+        "       |  |     |  |  |  |  /  _____  \\  |  |\\   | |  .  \\  .----)   | ",
+        "       |__|     |__|  |__| /__/     \\__\\ |__| \\__| |__|\\__\\ |_______/ "
+
+};
+
+void dss_thanks() {
+    dss_cls();
+    dss_draw_line();
+    for (size_t i = 0; i < THINKS_LINES; i++) {
+        puts(_dss_thanks[i]);
+    }
+    dss_draw_line();
+}
+
+void dss_print_space(u_int count) {
+    for (int j = 0; j < count / 10; ++j) {
+        printf("          ");
+    }
+    for (int i = 0; i < count % 10; ++i) {
+        putchar(' ');
     }
 }
 
 
-void dss_set_title(char *title)
-{
-    //设置窗口标题为“控制台窗口操作”
-    SetConsoleTitle((LPCSTR)title);
+void dss_reset_window() {
+    init();
+//    if (scbi.dwSize.X < WINDOW_LINES && scbi.dwSize.Y < WINDOW_COLS) {
+    // SMALL_RECT rc = {1, 1, 120 - 1, 40 - 1}; // 重置窗口位置和大小
+    // SetConsoleWindowInfo(handle_out, 1, &rc);
+    char s[40];
+    sprintf(s, "mode con cols=%d lines=%d", WINDOW_COLS, WINDOW_LINES);
+    system(s);
+    dss_set_global_color(NORMAL);
+//    }
 }
 
-void dss_get_title(char *title, u_int n)
-{ //获得当前窗口标题
-    GetConsoleTitle((LPSTR)title, n);
+COORD dss_get_window_size() {
+    init();
+    return scbi.dwSize;
+}
+
+COORD dss_get_cursor_location() {
+    init();
+    return scbi.dwCursorPosition;
+}
+
+void dss_set_title(char *title) {
+    //设置窗口标题为“控制台窗口操作”
+    SetConsoleTitle((LPCSTR) title);
+}
+
+void dss_get_title(char *title, u_int n) { //获得当前窗口标题
+    GetConsoleTitle((LPSTR) title, n);
 }
 
 /**
  **从 stdio.h 抄一点源码,
  **程序可能会快一点
 */
-void dss_println(const char *__format, ...)
-{
+void dss_println(const char *__format, ...) {
     //丢掉__mingw_vfprintf返回值,本来也没打算用
     __builtin_va_list __local_argv;
     __builtin_va_start(__local_argv, __format);
@@ -183,12 +227,14 @@ void dss_println(const char *__format, ...)
 }
 
 
-void dss_colored_putln(char *out, const int color)
-{
+void dss_colored_putln(char *out, const int color) {
     init();
     SetConsoleTextAttribute(handle_out, color);
     puts(out);
-    SetConsoleTextAttribute(handle_out, 0xE);
+    SetConsoleTextAttribute(handle_out, 0x2E);
+}
+void dss_set_cursor_location(COORD coord){
+    SetConsoleCursorPosition(handle_out,coord);
 }
 
 /**
@@ -201,17 +247,23 @@ void dss_colored_putln(char *out, const int color)
 6 = 黄色       E = 淡黄色
 7 = 白色       F = 亮白色
 */
-void dss_colored_put(char *out, const int color)
-{
+void dss_colored_put(char *out, const int color) {
     init();
     SetConsoleTextAttribute(handle_out, color);
-    fputs(out,stdout);
-    SetConsoleTextAttribute(handle_out, 0xE);
+    fputs(out, stdout);
+    SetConsoleTextAttribute(handle_out, 0x2E);
 }
-void dss_colored_putchar(char out, const int color)
-{
+
+void dss_colored_putc(char out, const int color) {
     init();
     SetConsoleTextAttribute(handle_out, color);
     putchar(out);
-    SetConsoleTextAttribute(handle_out, 0xE);
+    SetConsoleTextAttribute(handle_out, 0x2E);
 }
+
+void dss_set_color(const int color) {
+    init();
+    SetConsoleTextAttribute(handle_out, color);
+}
+
+

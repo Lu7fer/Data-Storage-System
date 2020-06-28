@@ -76,10 +76,16 @@
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="D:/DevelopmentWorkspace/Data-Storage-System/dataio.h">
+		<Unit filename="D:/DevelopmentWorkspace/Data-Storage-System/dataio_xml_type.h">
 			<Option target="Data_Storage_System"/>
 		</Unit>
 		<Unit filename="D:/DevelopmentWorkspace/Data-Storage-System/display.h">
+			<Option target="Data_Storage_System"/>
+		</Unit>
+		<Unit filename="D:/DevelopmentWorkspace/Data-Storage-System/io_no_exception.h">
+			<Option target="Data_Storage_System"/>
+		</Unit>
+		<Unit filename="D:/DevelopmentWorkspace/Data-Storage-System/io_structure.h">
 			<Option target="Data_Storage_System"/>
 		</Unit>
 		<Unit filename="D:/DevelopmentWorkspace/Data-Storage-System/main.c">

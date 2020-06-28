@@ -44,7 +44,7 @@ u_int manager_capacity = 0;
 
 varchar_t *dss_new_string(u_int length)
 {
-    if (length < 2)
+    if (length < 1)
         return NULL;
     u_int i;
     //获得字符串
@@ -58,6 +58,7 @@ get:
                 manager[i].string = (char *)malloc(length + 1);
                 manager[i].capacity = length + 1;
             }
+            manager[i].string[0]='\0';
             return &(manager[i]);
         }
     }
