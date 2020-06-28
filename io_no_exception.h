@@ -1,11 +1,18 @@
-//
-// Created by Dr.Yttrium on 2020/6/26.
-//
+/**
+-------------------------------------------
+实现了对数据和文件的读取操作
+检查文件是否是正确的: FILE *check_file(char *path);
+在屏幕上显示数据 同时可以根据提示进行 增加,排序:void dss_show_items(info_t *info, item_t *item);
+
+
+-------------------------------------------
+*/
 
 #ifndef _IO_NO_EXCEPTION
 #define _IO_NO_EXCEPTION
-
-#endif //_NO_EXCEPTION
+#endif //_IO_NO_EXCEPTION
+#define NUMBER_T "num"
+#define TEXT_T "text"
 
 #ifndef _UTILITY
 
@@ -17,7 +24,9 @@
 #define ITEM_MAX_LEN 0x20
 #define FILE_MAGIC_NUM "This is a dss file."
 
-#ifdef XXX
+
+//废弃了的方法
+#ifdef UNUSAGE
 u_int dss_passwd_check(FILE *fp, char *i_pw) {
     char f_pw[64];
     fgets(f_pw, 64, fp);
@@ -169,7 +178,6 @@ void dss_create_items() {
     dss_draw_line();
 
 }
-
 #endif
 
 struct table {
@@ -186,28 +194,35 @@ FILE *check_file(char *path) {
             return fp;
         fclose(fp);
     }
+    *path = '\0';
     return NULL;
 }
 
 struct info {
     u_int header_nums;
-    u_int passwd_length;
     u_int item_nums;
     char header[HEADER_MAX_SIZE][ITEM_MAX_LEN + 6];
-    char type[HEADER_MAX_SIZE][5];
+    char type[HEADER_MAX_SIZE][6];
 };
 typedef struct info info_t;
 
-info_t dss_getinfo(FILE *fp) {
+info_t dss_getinfo(FILE *fp, char *global_password, u_int *user) {
     info_t info;
     fread(&info, sizeof(info_t), 1, fp);
     fgetchar();
+    char file_passwd[0x41];
+    fgets(file_passwd, 0x41, fp);
+    printf("\n请输入密码:");
+    char passwd[0x40];
+    dss_get_password(passwd, PASSWD_MAX_LENGTH);
+    if (strcmp(passwd, file_passwd) == 0) {
+        strcpy(global_password, passwd);
+    } else {
+        *user = USER;
+    }
     return info;
 }
 
-
-#define NUMBER_T "num"
-#define TEXT_T "text"
 
 int dss_get_header(FILE *fp, info_t *info);
 
@@ -233,13 +248,23 @@ void _dss_create_header_draw(info_t *info) {
     fputs("请输入:", stdout);
 }
 
+
 /**
  * 创建表头
+
+
+            if (in == 'S' - 64) {
+                return 'S' - 64;
+            }
+
  * */
 void dss_create_header(info_t *info) {
     _dss_create_header_draw(info);
-    while (dss_get_header(stdin, info) != ('S' - 64))
+    do {
+        dss_get_header(stdin, info);
         _dss_create_header_draw(info);
+    } while (getch() != 'S' - 64);
+
     info->item_nums = 0;
 }
 
@@ -251,19 +276,19 @@ int dss_get_header(FILE *fp, info_t *info) {
         int i = 0;
         while (1) {
             in = getch();
-            if (in == 'S' - 64) {
-                return 'S' - 64;
-            }
             if (in == 13) {
                 buf[i] = '\0';
+                fputc('+', stdin);
                 break;
             } else if (in == '\b') {
-                fputs("\b \b", stdout);
-                --i;
+                if (i > 0) {
+                    fputs("\b \b", stdout);
+                    --i;
+                }
             } else {
                 if (i == ITEM_MAX_LEN + 4)
                     continue;
-                if (in >= 0x20 && in <= 0x79) {
+                if (in >= 0x20) {
                     putchar(in);
                     buf[i] = in;
                     ++i;
@@ -272,13 +297,21 @@ int dss_get_header(FILE *fp, info_t *info) {
 
         }
         if (info->header_nums <= HEADER_MAX_SIZE) {
-            sscanf(buf, "%s%s", info->header[info->header_nums], info->type[info->header_nums]);
+            sscanf(buf, "%s%4s", info->header[info->header_nums], info->type[info->header_nums]);
+            if (*(info->type[info->header_nums]) == 't')
+                strcpy(info->type[info->header_nums], TEXT_T);
+            else if (*(info->type[info->header_nums]) == 'n')
+                strcpy(info->type[info->header_nums], NUMBER_T);
+            else
+                strcpy(info->type[info->header_nums], NUMBER_T);
             info->header_nums++;
         }
     } else {
-        fgets(buf, 0x40, fp);
-        sscanf(buf, "%s%s", info->header[info->header_nums], info->type[info->header_nums]);
-        info->header_nums++;
+        for (int i = 0; i < info->header_nums; ++i) {
+            fgets(buf, 0x40, fp);
+            sscanf(buf, "%s%s", info->header[info->header_nums], info->type[info->header_nums]);
+        }
+
     }
     return 0;
 }
@@ -288,7 +321,6 @@ void dss_save(FILE *fp, info_t *info, item_t *items, char *passwd) {
     fputs(FILE_MAGIC_NUM, fp);
     //回车
     fputc('\n', fp);
-    info->passwd_length = strlen(passwd);
     //写入头信息
     fwrite(info, sizeof(info_t), 1, fp);
     //密码
@@ -355,7 +387,7 @@ int _dss_load_data(FILE *fp, info_t *info, item_t *items) {
 
 }
 
-void _dss_show_items_draw(info_t *info, item_t *items, u_int lines) {
+void _dss_show_items_draw(info_t *info, item_t *items, u_int start_items) {
 
     dss_cls();
     int title_start = dss_get_window_size().X / 2 - 4;
@@ -368,7 +400,10 @@ void _dss_show_items_draw(info_t *info, item_t *items, u_int lines) {
         printf("%-15s", info->header[i]);
     }
     dss_draw_line();
-    for (int j = lines; j < info->item_nums && j < lines + 20; ++j) {
+    u_int last = dss_get_window_size().Y - dss_get_cursor_location().Y - 1;
+    //TODO 显示行数
+    for (int j = start_items; j < info->item_nums && j < start_items - last; ++j) {
+        dss_print_space(4);
         for (int i = 0; i < info->header_nums; ++i) {
             printf("%-15s", items[j].item[i]);
         }
@@ -378,21 +413,257 @@ void _dss_show_items_draw(info_t *info, item_t *items, u_int lines) {
 
 }
 
+int sort_index;
+char sort_type;
+
+int _dss_sort_up(const void *s1, const void *s2) {
+
+    if (sort_type == 't') {
+        return strcmp(((item_t *) s1)->item[sort_index], ((item_t *) s1)->item[sort_index]);
+    }
+    if (sort_type == 'n') {
+        double d1 = 0, d2 = 0;
+        sscanf(((item_t *) s1)->item[sort_index], "%lf", &d1);
+        sscanf(((item_t *) s1)->item[sort_index], "%lf", &d2);
+        return d1 * 10 - d2 * 10;
+    }
+}
+
+int _dss_sort_down(const void *s1, const void *s2) {
+    return -_dss_sort_up(s1, s2);
+}
+
+int lines_of_5 = 0;
+
+void dss_ex_mode(info_t *info, item_t *item) {
+    {
+        dss_set_title("ex mode");
+        COORD c;
+        c.X = 0;
+        c.Y = dss_get_window_size().Y - 10;
+        dss_set_cursor_location(c);
+        dss_draw_line();
+        dss_print_space(dss_get_window_size().X * 9 - 2);
+        c.Y++;
+        dss_set_cursor_location(c);
+
+        puts("语法: sort 标题 [<|>] 默认: < ");
+        puts("      show 标题 < | > num  :显示某标题大于或小于num的数据");
+        puts("      aver n 标题... :求平均 n 为列数");
+        puts("      sum n 标题... :计算总和 n为列数");
+
+        dss_draw_line();
+    }
+    char command[80];
+    gets(command);
+    char split[HEADER_MAX_SIZE + 3][0x20];
+    sscanf(command, "%s%s%s%s%s%s%s%s%s%s%s%s",
+           split[0], split[1], split[2],
+           split[3], split[4], split[5],
+           split[6], split[7], split[8],
+           split[9], split[10], split[11]
+    );
+
+    //sort start
+    if (strcmp(split[0], "sort") == 0) {
+        for (int i = 0; i < info->header_nums; ++i) {
+            if (strcmp(info->header[i], split[1]) == 0) {
+                sort_index = i;
+                sort_type = *(info->type[i]);
+                switch (*split[2]) {
+                    case '>':
+                        qsort(item, info->item_nums, sizeof(item_t), _dss_sort_down);
+                        break;
+                    case '<':
+                    default:
+                        qsort(item, info->item_nums, sizeof(item_t), _dss_sort_up);
+                }
+                break;
+            }
+        }
+        //sort end
+    }
+        //show start
+    else if (strcmp(split[0], "show") == 0) {
+        switch (*split[2]) {
+            case '>':
+                for (int i = 0; i < info->header_nums; ++i) {
+                    if (strcmp(info->header[i], split[1]) == 0) {
+                        sort_index = i;
+                        sort_type = *(info->type[i]);
+                    }
+                }
+                qsort(item, info->item_nums, sizeof(item_t), _dss_sort_up);
+                double vertical_l = 0;
+                if (sscanf(split[3], "%lf", &vertical_l) == EOF) {
+                    for (int i = 0; i < info->item_nums; ++i) {
+                        if (strcmp(item[i].item[sort_index], split[3])) {
+                            _dss_show_items_draw(info, item, i);
+                        }
+                        lines_of_5 = i;
+                    }
+                }
+                for (int i = 0; i < info->item_nums; ++i) {
+                    double tmp;
+                    sscanf(item->item[i], "%lf", &tmp);
+                    if (vertical_l == tmp) { _dss_show_items_draw(info, item, i); }
+                    lines_of_5 = tmp;
+                }
+                break;
+
+            case '<':
+                for (int i = 0; i < info->header_nums; ++i) {
+                    if (strcmp(info->header[i], split[1]) == 0) {
+                        sort_index = i;
+                        sort_type = *(info->type[i]);
+                    }
+                }
+                qsort(item, info->item_nums, sizeof(item_t), _dss_sort_up);
+                double vertical_s = 0;
+                if (sscanf(split[3], "%lf", &vertical_s) == EOF) {
+                    for (int i = 0; i < info->item_nums; ++i) {
+                        if (strcmp(item[i].item[sort_index], split[3])) {
+                            _dss_show_items_draw(info, item, i);
+                        }
+                        lines_of_5 = i;
+                    }
+                }
+                for (int i = 0; i < info->item_nums; ++i) {
+                    double tmp;
+                    sscanf(item->item[i], "%lf", &tmp);
+                    if (vertical_l == tmp) { _dss_show_items_draw(info, item, i); }
+                    lines_of_5 = tmp;
+                }
+                break;
+            default:
+                printf("\n语法有误");
+                lines_of_5 = 0;
+                return;
+        }
+
+
+    }
+        //aver start
+    else if (strcmp(split[0], "aver") == 0) {
+        int n = 0;
+        sscanf(split[1], "%d", &n);
+        int match[HEADER_MAX_SIZE];
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < info->header_nums; ++j) {
+                if (strcmp(split[i + 2], info->header[j]) == 0) {
+                    match[i] = j;
+                }
+            }
+        }
+        int aver_index;
+        for (int k = 0; k < info->header_nums; ++k) {
+            if (strcmp("aver", info->header[k]) == 0) {
+                aver_index = k;
+            }
+        }
+        aver_index = info->header_nums;
+        strcpy(info->header[aver_index], "aver");
+        info->header_nums++;
+
+        for (int l = 0; l < info->item_nums; ++l) {
+            double sum = 0;
+            for (int i = 0; i < n; ++i) {
+                double data = 0;
+                sscanf(item[l].item[match[i]], "%lf", &data);
+                sum += data;
+            }
+            sprintf(item[l].item[match[aver_index]], "%.1lf", sum / n);
+        }
+
+    }
+        //aver start
+    else if (strcmp(split[0], "sum") == 0) {
+        int n = 0;
+        sscanf(split[1], "%d", &n);
+        int match[HEADER_MAX_SIZE];
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < info->header_nums; ++j) {
+                if (strcmp(split[i + 2], info->header[j]) == 0) {
+                    match[i] = j;
+                }
+            }
+        }
+        int aver_index;
+        for (int k = 0; k < info->header_nums; ++k) {
+            if (strcmp("sum", info->header[k]) == 0) {
+                aver_index = k;
+            }
+        }
+        aver_index = info->header_nums;
+        strcpy(info->header[aver_index], "sum");
+        info->header_nums++;
+
+        for (int l = 0; l < info->item_nums; ++l) {
+            double sum = 0;
+            for (int i = 0; i < n; ++i) {
+                double data = 0;
+                sscanf(item[l].item[match[i]], "%lf", &data);
+                sum += data;
+            }
+            sprintf(item[l].item[match[aver_index]], "%.1lf", sum);
+        }
+
+    }
+
+}
+
+void _dss_insert_item(info_t *info, item_t *item) {
+    COORD c;
+    c.X = 0;
+    c.Y = dss_get_window_size().Y - 3;
+    dss_set_cursor_location(c);
+    dss_draw_line();
+    char first[HEADER_MAX_SIZE * ITEM_MAX_LEN];
+    while (gets(first) == NULL);
+    char input_get[HEADER_MAX_SIZE][ITEM_MAX_LEN];
+    sscanf(first, "%s%s%s%s%s%s%s%s%s%s%s%s",
+           input_get[0], input_get[1], input_get[2], input_get[3],
+           input_get[4], input_get[5], input_get[6], input_get[7],
+           input_get[8], input_get[9], input_get[10], input_get[11]
+    );
+    for (int i = 0; i < info->header_nums; ++i) {
+        strncpy(item[info->item_nums].item[i], input_get[i], ITEM_MAX_LEN);
+    }
+    info->item_nums++;
+}
 
 void dss_show_items(info_t *info, item_t *item) {
-    int lines_of_5 = 0;
-    _dss_show_items_draw(info, item, lines_of_5);
     short ctrl;
+    redraw:
+    dss_cls();
+    _dss_show_items_draw(info, item, lines_of_5);
+    operate:
     ctrl = dss_get_control();
     if (ctrl == UP) {
         if (lines_of_5 > 0)
             lines_of_5--;
     } else if (ctrl == DOWN) {
-        if (lines_of_5 < info->item_nums - 20)
+        if (lines_of_5 < info->item_nums - 1)
             lines_of_5++;
-    } else if(ctrl == 'q'){
+    } else if (ctrl == 'q') {
+        return;
+    } else if (ctrl == 'e') {
+        dss_ex_mode(info, item);
+    } else if (ctrl == 'i') {
+        _dss_insert_item(info, item);
+    } else {
+        goto operate;
+    }
+    goto redraw;
+}
 
-    } else if(ctrl=='e'){
-        
+
+void _name_sort(info_t *info, item_t *item) {
+    for (int i = 0; i < info->header_nums; ++i) {
+        if (strcmp("姓名", info->header[i]) == 0) {
+            sort_index = i;
+            qsort(item, info->item_nums, sizeof(item_t), _dss_sort_up);
+        }
     }
 }
+

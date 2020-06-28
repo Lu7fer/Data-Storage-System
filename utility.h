@@ -1,21 +1,18 @@
-/*
+/**
  * @Author : Lu7fer
  * @Date: 2020-06-19 20:21:15
  * @LastEditTime: 2020-06-23 18:58:20
  * @FilePath: /Data-Storage-System/utility.h
  * @Stu_ID: 2019X....X229_Lu7fer
  * @Github: https://github.com/Lu7fer/C-language-study-homework
- * @Copyright
+
 -------------------------------------------
-Copyright (C) 2020 - Lu7fer
-C-language-study-homework is free software:
-you can redistribute it and/or modify it under the terms of 
-the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version.
- 
-You should have received a copy of the GNU General Public License 
-along with C-language-study-homework. 
-If not, see <http: //www.gnu.org/licenses/>.
+实现了对控制台的操作和一些工具
+
+文件选择可以调出系统的文件选择框: char *dss_select_file(char *path, u_int length, char method) ;
+在输入密码的时候可以不显示在终端里:char *dss_password_gets(char *passwd, u_int size);
+获取键盘的箭头输入 :short dss_get_control();
+重新实现输入,在回车的时候不换行: char *dss_get_input(char *inputs, u_int size);
 -------------------------------------------
  */
 
@@ -26,7 +23,9 @@ If not, see <http: //www.gnu.org/licenses/>.
 typedef unsigned int u_int;
 
 #ifndef _INC_STDLIB
+
 #include <stdlib.h>
+
 #endif /* stdlib.h */
 
 #ifndef _INC_CONIN
@@ -36,7 +35,9 @@ typedef unsigned int u_int;
 #endif /* conio.h */
 
 #ifndef _INC_STDIO
+
 #include <stdio.h>
+
 #endif /* stdio.h */
 
 #ifndef _SHLOBJ_H_
@@ -44,6 +45,7 @@ typedef unsigned int u_int;
 #include <shlobj.h>
 
 #endif
+
 
 /**
   * @param message 要输出的提示
@@ -73,11 +75,6 @@ char *dss_gets_invisible(char *massage, char *str, u_int len_of_str) {
     return str;
 }
 
-#ifndef _VARCHER
-
-#include "varchar.h"
-
-#endif
 
 void dss_clean() {
     CloseHandle(handle_out); //关闭标准输出设备句柄
@@ -185,36 +182,30 @@ char *dss_select_file(char *path, u_int length, char method) {
 }
 
 
-char *dss_password_gets(char *passwd, u_int size) {
-    u_int i = 0;
-    for (;;) {
-        switch (passwd[i] = getch()) {
-            case '\b':
-                if (i == 0)
-                    break;
+char *dss_get_password(char *passwd, u_int size) {
+    char in;
+    int i = 0;
+    while (1) {
+        in = getch();
+        if (in == 13) {
+            passwd[i] = '\0';
+            fputc('+', stdin);
+            break;
+        } else if (in == '\b') {
+            if (i > 0) {
+                fputs("\b \b", stdout);
                 --i;
-                break;
-            case '\n':
-                passwd[i] = '\0';
-                return passwd;
-            default: {
-                /**除去ascii不可打印字符*/
-                if (passwd[i] > 0x20 && passwd[i] < 0x7F) {
-                    if (i < size - 1) {
-                        ++i;
-                        break;
-                    } else {
-                        COORD position = dss_get_cursor_location();
-                        COORD output = dss_get_window_size();
-                        output.X = 0;
-                        SetConsoleCursorPosition(handle_out, output);
-                        dss_colored_put("你输入太多啦", ALERT_TEXT);
-                        SetConsoleCursorPosition(handle_out, position);
-                    }
-                }
+            }
+        } else {
+            if (i == size - 2)
+                continue;
+            if (in >= 0x20) {
+                putchar('*');
+                passwd[i] = in;
+                ++i;
             }
         }
+
     }
 }
-
 

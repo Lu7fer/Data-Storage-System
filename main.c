@@ -5,25 +5,21 @@
  * @FilePath: /Data-Storage-System/main.c
  * @Stu_ID: 2019X....X229_Lu7fer
  * @Github: https://github.com/Lu7fer/Data-Storage-System
- * @Copyright
 -------------------------------------------
-Copyright (C) 2020 - Lu7fer
-Data-storage-System is free software:
-you can redistribute it and/or modify it under the terms of 
-the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or (at your option) any later version.
- 
-You should have received a copy of the GNU General Public License 
-along with Data-Storage-System. 
-If not, see <http: //www.gnu.org/licenses/>.
+实现了主界面
+并绘制界面
+
 -------------------------------------------
  */
 
 //#define DSS_DEBUG
 //#define DSS_DEBUG
 
-#ifndef _DISPLAY
 
+#define ADMIN '1'
+#define USER '2'
+#define PASSWD_MAX_LENGTH 64
+#ifndef _DISPLAY
 
 #include "display.h"
 
@@ -34,29 +30,23 @@ If not, see <http: //www.gnu.org/licenses/>.
 
 #endif
 #ifndef _UTILITY
-
 #include "utility.h"
-
 #endif
 
-
-#define ADMIN '1'
-#define USER '2'
-char user;
+int user;
 
 #define  HAVE_DATA_FILE 1
 #define  NO_DATA_FILE 0
 char has_data_file;
 
 /*全局 文件路径*/
-varchar_t *data;
 char *file_path;
 #define FILE_PATH_SIZE 500
-
 /*全局 文件路径*/
+
+
 #define PASSWD_MAX_LENGTH 64
 char passwd[PASSWD_MAX_LENGTH];
-
 
 //
 //方法声明
@@ -85,7 +75,7 @@ int main(int argc, char const *argv[]) {
     item_t *items;
     char another_save[FILE_PATH_SIZE];
     FILE *another_fp;
-    static int lines_of_5=0;
+    static int lines_of_5 = 0;
     //init
     dss_cls();
     dss_reset_window();
@@ -96,6 +86,8 @@ int main(int argc, char const *argv[]) {
     puts("请选择您的身份:\n1.管理员(具有修改和查看权限)\t2.普通用户(具有查看权限)");
     user_select: //user_select
     switch (getch()) {
+        case 3:
+            exit(3);
         case '1': {
             user = ADMIN;
             break;
@@ -114,24 +106,28 @@ int main(int argc, char const *argv[]) {
 //    dss_select_file(file_path,FILE_PATH_SIZE,'o');
     menu:
     dss_set_title("请选择需要进行的操作");
-    dss_print_panel();
+    dss_print_panel(&info, NULL);
     switch (getch()) {
         case '1':
             dss_select_file(file_path, FILE_PATH_SIZE, 'o');
             fp = check_file(file_path);
-            info = dss_getinfo(fp);
-
+            info = dss_getinfo(fp, passwd, &user);
             goto menu;
+
         case '2':
             if (user == ADMIN) {
                 dss_set_title("新建");
                 info.header_nums = 0;
                 info.item_nums = 0;
                 dss_create_header(&info);
+                dss_show_items(&info, items);
             }
             goto menu;
+
+
         case '3':
             if ((user == ADMIN) && (*file_path != 0) && (info.header_nums != 0)) {
+                freopen(file_path, "w", fp);
                 dss_save(fp, &info, items, passwd);
             }
             goto menu;
@@ -142,6 +138,8 @@ int main(int argc, char const *argv[]) {
             }
             goto menu;
         case '5':
+            dss_show_items(&info, items);
+
             goto menu;
         case '6':
             break;
@@ -150,7 +148,7 @@ int main(int argc, char const *argv[]) {
     }
     dss_thanks();
     puts("感谢您的使用, 程序将会在5秒后自动退出...");
-    Sleep(5000);
+    Sleep(3000);
     dss_clean();
     return 0;
 }
@@ -160,14 +158,16 @@ int main(int argc, char const *argv[]) {
 #ifdef DSS_DEBUG
 
 int main(int argc, const char **argv) {
-    printf("%d",getch());
+    char password[0x40];
+    dss_get_password(password,0x40);
+    puts(password);
     return 0;
 }
 
 #endif
 
 
-void dss_print_panel(info_t *info) {
+void dss_print_panel(info_t *info, char *tips) {
     dss_cls();
     dss_reset_window();
     putchar('\n');
@@ -190,31 +190,41 @@ void dss_print_panel(info_t *info) {
     printf("1.选择  \t\t\t");
     if (user == ADMIN) {
         printf("2.新建  \t\t\t");
-        if(info->header_nums!=0){
+        if (info->header_nums != 0) {
             printf("3.保存  \n\n");
             dss_print_space(8);
             printf("4.另存为\t\t\t");
+        } else {
+            dss_set_color(DISABLE_TEXT);
+            printf("3.保存  \n\n");
+            dss_print_space(8);
+            printf("4.另存为\t\t\t");
+            dss_set_color(NORMAL_TEXT);
         }
     } else {
         dss_colored_put("2.新建  \t\t\t", DISABLE_TEXT);
+        dss_set_color(DISABLE_TEXT);
+        printf("3.保存  \n\n");
+        dss_print_space(8);
+        printf("4.另存为\t\t\t");
+        dss_set_color(NORMAL_TEXT);
     }
 
     if (*file_path == 0) {
         if (info->header_nums == 0)
-            printf("5.查看&编辑\t\t\t");
-        dss_set_color(NORMAL_TEXT);
+            dss_colored_put("5.查看&编辑\t\t\t", DISABLE_TEXT);
         if (info->header_nums != 0) {
             printf("5.查看&编辑\t\t\t");
         }
-        dss_set_color(NORMAL_TEXT);
-        printf("6.退出\n");
     } else {
-        printf("3.保存  \n\n");
-        dss_print_space(8);
-        printf("4.另存为\t\t\t");
         printf("5.查看&编辑  \t\t\t");
-        printf("6.退出\n");
     }
+    printf("6.退出\n");
     printf("\n  请输入相应数字继续...");
-
+    COORD coord;
+    coord.X = 0;
+    coord.Y = dss_get_window_size().Y + 1;
+    dss_set_cursor_location(coord);
+    if (tips != NULL)
+        fputs(tips, stdout);
 }

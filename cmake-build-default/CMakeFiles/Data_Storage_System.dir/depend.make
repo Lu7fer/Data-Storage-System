@@ -5,5 +5,4 @@ CMakeFiles/Data_Storage_System.dir/main.c.obj: ../display.h
 CMakeFiles/Data_Storage_System.dir/main.c.obj: ../io_no_exception.h
 CMakeFiles/Data_Storage_System.dir/main.c.obj: ../main.c
 CMakeFiles/Data_Storage_System.dir/main.c.obj: ../utility.h
-CMakeFiles/Data_Storage_System.dir/main.c.obj: ../varchar.h
 
