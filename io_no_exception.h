@@ -188,11 +188,7 @@ typedef struct table item_t;
 FILE *check_file(char *path) {
     FILE *fp;
     if (fp = fopen(path, "r")) {
-        char buf[64];
-        fgets(buf, 64, fp);
-        if (strcmp(buf, FILE_MAGIC_NUM) == 0)
-            return fp;
-        fclose(fp);
+        return fp;
     }
     *path = '\0';
     return NULL;
@@ -207,16 +203,20 @@ struct info {
 typedef struct info info_t;
 
 info_t dss_getinfo(FILE *fp, char *global_password, u_int *user) {
+//    fseek(fp,0,SEEK_SET);
+//    char tmp[50];
+//    fgets(tmp,50,fp);
+//    printf("%s",tmp);
     info_t info;
     fread(&info, sizeof(info_t), 1, fp);
-    fgetchar();
-    char file_passwd[0x41];
-    fgets(file_passwd, 0x41, fp);
+    char file_passwd[PASSWD_MAX_LENGTH];
+    fread(file_passwd, 1, PASSWD_MAX_LENGTH, fp);
     printf("\n请输入密码:");
-    char passwd[0x40];
-    dss_get_password(passwd, PASSWD_MAX_LENGTH);
-    if (strcmp(passwd, file_passwd) == 0) {
-        strcpy(global_password, passwd);
+    char input_passwd[PASSWD_MAX_LENGTH];
+    dss_get_password(input_passwd, PASSWD_MAX_LENGTH);
+    if (strcmp(input_passwd, file_passwd) == 0) {
+        strcpy(global_password, input_passwd);
+        *user = ADMIN;
     } else {
         *user = USER;
     }
@@ -278,7 +278,6 @@ int dss_get_header(FILE *fp, info_t *info) {
             in = getch();
             if (in == 13) {
                 buf[i] = '\0';
-                fputc('+', stdin);
                 break;
             } else if (in == '\b') {
                 if (i > 0) {
@@ -317,23 +316,21 @@ int dss_get_header(FILE *fp, info_t *info) {
 }
 
 void dss_save(FILE *fp, info_t *info, item_t *items, char *passwd) {
-    //魔数
-    fputs(FILE_MAGIC_NUM, fp);
-    //回车
-    fputc('\n', fp);
+
     //写入头信息
     fwrite(info, sizeof(info_t), 1, fp);
     //密码
-    fprintf(fp, "%s\n", passwd);
+    if (*passwd == 0) {
+        printf("\n请输入密码：");
+        dss_get_password(passwd, PASSWD_MAX_LENGTH);
+    }
+    fwrite(passwd, 1, PASSWD_MAX_LENGTH, fp);
     //信息
     for (int i = 0; i < info->item_nums; ++i) {
-        for (int j = 0; j < info->header_nums; ++j) {
-            if (strlen(items[i].item[j]) == 0)
-                fprintf(fp, "NULL");
-            else
-                fprintf(fp, "%s ", items[i].item[j]);
-        }
+        fwrite(items + i, sizeof(item_t), 1, fp);
     }
+    fflush(fp);
+    fclose(fp);
 }
 
 char *_dss_gen(u_int num, char *str) {
@@ -379,31 +376,35 @@ int _dss_load_data(FILE *fp, info_t *info, item_t *items) {
 
     } else {
         for (int i = 0; i < info->item_nums; ++i) {
-            for (int j = 0; j < info->header_nums; ++j) {
-                fscanf(fp, "%s ", items[i].item[j]);
-            }
+            fread(items, sizeof(item_t), info->item_nums, fp);
         }
     }
 
 }
 
-void _dss_show_items_draw(info_t *info, item_t *items, u_int start_items) {
+void _dss_show_items_draw(info_t *info, item_t *items, u_int start_items, int usr) {
 
     dss_cls();
+    dss_set_title("查看&编辑");
     int title_start = dss_get_window_size().X / 2 - 4;
     dss_print_space(title_start);
     puts("查看&编辑");
-    printf("i:插入新记录   q:退出  e:指令模式  上方向键:向上翻页  下方向键:向下翻页");
+
+    if (usr == USER) {
+        dss_colored_put("i:插入新记录  d:删除指定记录", DISABLE_TEXT);
+    } else {
+        printf("i:插入新记录  d:删除指定记录");
+    }
+    printf("q:退出  e:指令模式  上方向键:向上翻页  下方向键:向下翻页");
     dss_draw_line();
-    dss_print_space(4);
+    dss_print_space(5);
     for (int i = 0; i < info->header_nums; ++i) {
         printf("%-15s", info->header[i]);
     }
     dss_draw_line();
-    u_int last = dss_get_window_size().Y - dss_get_cursor_location().Y - 1;
     //TODO 显示行数
-    for (int j = start_items; j < info->item_nums && j < start_items - last; ++j) {
-        dss_print_space(4);
+    for (int j = start_items; j < info->item_nums && j - start_items < 20; ++j) {
+        printf("%-3d. ", j + 1);
         for (int i = 0; i < info->header_nums; ++i) {
             printf("%-15s", items[j].item[i]);
         }
@@ -419,12 +420,12 @@ char sort_type;
 int _dss_sort_up(const void *s1, const void *s2) {
 
     if (sort_type == 't') {
-        return strcmp(((item_t *) s1)->item[sort_index], ((item_t *) s1)->item[sort_index]);
+        return strcmp(((item_t *) s1)->item[sort_index], ((item_t *) s2)->item[sort_index]);
     }
     if (sort_type == 'n') {
         double d1 = 0, d2 = 0;
         sscanf(((item_t *) s1)->item[sort_index], "%lf", &d1);
-        sscanf(((item_t *) s1)->item[sort_index], "%lf", &d2);
+        sscanf(((item_t *) s2)->item[sort_index], "%lf", &d2);
         return d1 * 10 - d2 * 10;
     }
 }
@@ -485,54 +486,37 @@ void dss_ex_mode(info_t *info, item_t *item) {
     }
         //show start
     else if (strcmp(split[0], "show") == 0) {
+        for (int i = 0; i < info->header_nums; ++i) {
+            if (strcmp(split[1], info->header[i]) == 0);
+            {
+                sort_index = i;
+                sort_type = *(info->type[i]);
+            }
+        }
         switch (*split[2]) {
             case '>':
-                for (int i = 0; i < info->header_nums; ++i) {
-                    if (strcmp(info->header[i], split[1]) == 0) {
-                        sort_index = i;
-                        sort_type = *(info->type[i]);
-                    }
-                }
                 qsort(item, info->item_nums, sizeof(item_t), _dss_sort_up);
                 double vertical_l = 0;
-                if (sscanf(split[3], "%lf", &vertical_l) == EOF) {
-                    for (int i = 0; i < info->item_nums; ++i) {
-                        if (strcmp(item[i].item[sort_index], split[3])) {
-                            _dss_show_items_draw(info, item, i);
-                        }
-                        lines_of_5 = i;
-                    }
-                }
                 for (int i = 0; i < info->item_nums; ++i) {
                     double tmp;
-                    sscanf(item->item[i], "%lf", &tmp);
-                    if (vertical_l == tmp) { _dss_show_items_draw(info, item, i); }
-                    lines_of_5 = tmp;
+                    sscanf(item[i].item[sort_index], "%lf", &tmp);
+                    if (vertical_l < tmp) {
+                        lines_of_5 = tmp;
+                        break;
+                    }
                 }
                 break;
 
             case '<':
-                for (int i = 0; i < info->header_nums; ++i) {
-                    if (strcmp(info->header[i], split[1]) == 0) {
-                        sort_index = i;
-                        sort_type = *(info->type[i]);
-                    }
-                }
-                qsort(item, info->item_nums, sizeof(item_t), _dss_sort_up);
+                qsort(item, info->item_nums, sizeof(item_t), _dss_sort_down);
                 double vertical_s = 0;
-                if (sscanf(split[3], "%lf", &vertical_s) == EOF) {
-                    for (int i = 0; i < info->item_nums; ++i) {
-                        if (strcmp(item[i].item[sort_index], split[3])) {
-                            _dss_show_items_draw(info, item, i);
-                        }
-                        lines_of_5 = i;
-                    }
-                }
                 for (int i = 0; i < info->item_nums; ++i) {
                     double tmp;
                     sscanf(item->item[i], "%lf", &tmp);
-                    if (vertical_l == tmp) { _dss_show_items_draw(info, item, i); }
-                    lines_of_5 = tmp;
+                    if (vertical_l > tmp) {
+                        lines_of_5 = tmp;
+                        break;
+                    }
                 }
                 break;
             default:
@@ -552,19 +536,23 @@ void dss_ex_mode(info_t *info, item_t *item) {
             for (int j = 0; j < info->header_nums; ++j) {
                 if (strcmp(split[i + 2], info->header[j]) == 0) {
                     match[i] = j;
+                    break;
                 }
             }
         }
         int aver_index;
+        aver_index = info->header_nums;
+        strcpy(info->type[info->header_nums], "num");
+        info->header_nums++;
+
         for (int k = 0; k < info->header_nums; ++k) {
             if (strcmp("aver", info->header[k]) == 0) {
                 aver_index = k;
+                info->header_nums--;
+                strcpy(info->type[k], "num");
             }
         }
-        aver_index = info->header_nums;
         strcpy(info->header[aver_index], "aver");
-        info->header_nums++;
-
         for (int l = 0; l < info->item_nums; ++l) {
             double sum = 0;
             for (int i = 0; i < n; ++i) {
@@ -572,7 +560,7 @@ void dss_ex_mode(info_t *info, item_t *item) {
                 sscanf(item[l].item[match[i]], "%lf", &data);
                 sum += data;
             }
-            sprintf(item[l].item[match[aver_index]], "%.1lf", sum / n);
+            sprintf(item[l].item[aver_index], "%.1lf", sum / n);
         }
 
     }
@@ -585,19 +573,22 @@ void dss_ex_mode(info_t *info, item_t *item) {
             for (int j = 0; j < info->header_nums; ++j) {
                 if (strcmp(split[i + 2], info->header[j]) == 0) {
                     match[i] = j;
+                    break;
                 }
             }
         }
         int aver_index;
+        aver_index = info->header_nums;
+        strcpy(info->type[info->header_nums], "num");
+        info->header_nums++;
         for (int k = 0; k < info->header_nums; ++k) {
             if (strcmp("sum", info->header[k]) == 0) {
                 aver_index = k;
+                strcpy(info->type[k], "num");
+                info->header_nums--;
             }
         }
-        aver_index = info->header_nums;
         strcpy(info->header[aver_index], "sum");
-        info->header_nums++;
-
         for (int l = 0; l < info->item_nums; ++l) {
             double sum = 0;
             for (int i = 0; i < n; ++i) {
@@ -605,8 +596,9 @@ void dss_ex_mode(info_t *info, item_t *item) {
                 sscanf(item[l].item[match[i]], "%lf", &data);
                 sum += data;
             }
-            sprintf(item[l].item[match[aver_index]], "%.1lf", sum);
+            sprintf(item[l].item[aver_index], "%.1lf", sum);
         }
+
 
     }
 
@@ -632,11 +624,22 @@ void _dss_insert_item(info_t *info, item_t *item) {
     info->item_nums++;
 }
 
-void dss_show_items(info_t *info, item_t *item) {
+void dss_delete(info_t *info, item_t *item, u_int index) {
+    if (index == info->item_nums) {
+        info->item_nums--;
+        return;
+    }
+    item_t *tmp = (item_t *) malloc(sizeof(item_t) * info->item_nums - index);
+    memcpy(tmp, &item[index], sizeof(item_t) * info->item_nums - index);
+    memcpy(&item[index - 1], tmp, sizeof(item_t) * info->item_nums - index);
+    info->item_nums--;
+}
+
+void dss_show_items(info_t *info, item_t *item, int user) {
     short ctrl;
     redraw:
     dss_cls();
-    _dss_show_items_draw(info, item, lines_of_5);
+    _dss_show_items_draw(info, item, lines_of_5, user);
     operate:
     ctrl = dss_get_control();
     if (ctrl == UP) {
@@ -646,11 +649,30 @@ void dss_show_items(info_t *info, item_t *item) {
         if (lines_of_5 < info->item_nums - 1)
             lines_of_5++;
     } else if (ctrl == 'q') {
+        lines_of_5 = 0;
         return;
+    } else if (ctrl == 'd') {
+        if (user == ADMIN) {
+            COORD c;
+            c.X = 0;
+            c.Y = dss_get_window_size().Y - 3;
+            dss_set_cursor_location(c);
+            dss_draw_line();
+            dss_print_space(dss_get_window_size().X * 2 - 2);
+            c.Y++;
+            dss_set_cursor_location(c);
+            printf("请输入删除条目的序号:");
+            int index;
+            scanf("%d", &index);
+            if (index <= info->item_nums && index > 0) {
+                dss_delete(info, item, index);
+            }
+        }
     } else if (ctrl == 'e') {
         dss_ex_mode(info, item);
     } else if (ctrl == 'i') {
-        _dss_insert_item(info, item);
+        if (user == ADMIN)
+            _dss_insert_item(info, item);
     } else {
         goto operate;
     }
@@ -660,10 +682,9 @@ void dss_show_items(info_t *info, item_t *item) {
 
 void _name_sort(info_t *info, item_t *item) {
     for (int i = 0; i < info->header_nums; ++i) {
-        if (strcmp("姓名", info->header[i]) == 0) {
+        if (strcmp("name", info->header[i]) == 0) {
             sort_index = i;
             qsort(item, info->item_nums, sizeof(item_t), _dss_sort_up);
         }
     }
 }
-

@@ -40,8 +40,8 @@ int user;
 char has_data_file;
 
 /*全局 文件路径*/
-char *file_path;
 #define FILE_PATH_SIZE 500
+char file_path[FILE_PATH_SIZE];
 /*全局 文件路径*/
 
 
@@ -51,7 +51,7 @@ char passwd[PASSWD_MAX_LENGTH];
 //
 //方法声明
 //
-void dss_print_panel();
+void dss_print_panel(info_t *info, char *tips);
 
 void dss_print_space(u_int count);
 //
@@ -63,16 +63,15 @@ void dss_print_space(u_int count);
 
 int main(int argc, char const *argv[]) {
     //init
-
     dss_cls();
     dss_reset_window();
     *passwd = 0;
-    file_path = (char *) calloc(FILE_PATH_SIZE, 1);
+    *file_path = 0;
     info_t info;
     info.header_nums = 0;
     info.item_nums = 0;
     FILE *fp;
-    item_t *items;
+    item_t items[0x100];
     char another_save[FILE_PATH_SIZE];
     FILE *another_fp;
     static int lines_of_5 = 0;
@@ -84,34 +83,20 @@ int main(int argc, char const *argv[]) {
     dss_welcome();
     puts("本系统可以进行学生成绩的管理操作");
     puts("请选择您的身份:\n1.管理员(具有修改和查看权限)\t2.普通用户(具有查看权限)");
-    user_select: //user_select
-    switch (getch()) {
-        case 3:
-            exit(3);
-        case '1': {
-            user = ADMIN;
-            break;
-        }
-        case '2': {
-            user = USER;
-            break;
-        }
-        default: {
-            dss_set_title("输入有误,请重新输入 ");
-            dss_colored_put("\r输入有误,请重新输入", ALERT_TEXT);
-            goto user_select; //goto
-        }
-    }
+    user = ADMIN;
 
 //    dss_select_file(file_path,FILE_PATH_SIZE,'o');
     menu:
     dss_set_title("请选择需要进行的操作");
     dss_print_panel(&info, NULL);
     switch (getch()) {
+        case 3:
+            exit(3);
         case '1':
             dss_select_file(file_path, FILE_PATH_SIZE, 'o');
             fp = check_file(file_path);
             info = dss_getinfo(fp, passwd, &user);
+            _dss_load_data(fp, &info, items);
             goto menu;
 
         case '2':
@@ -120,7 +105,8 @@ int main(int argc, char const *argv[]) {
                 info.header_nums = 0;
                 info.item_nums = 0;
                 dss_create_header(&info);
-                dss_show_items(&info, items);
+                dss_show_items(&info, items,user);
+
             }
             goto menu;
 
@@ -132,13 +118,15 @@ int main(int argc, char const *argv[]) {
             }
             goto menu;
         case '4':
-            dss_select_file(another_save, FILE_PATH_SIZE, 's');
-            if (another_fp = fopen(another_save, "w")) {
-                dss_save(another_fp, &info, items, passwd);
+            if (info.header_nums != 0) {
+                dss_select_file(another_save, FILE_PATH_SIZE, 's');
+                if (another_fp = fopen(another_save, "w")) {
+                    dss_save(another_fp, &info, items, passwd);
+                }
             }
             goto menu;
         case '5':
-            dss_show_items(&info, items);
+            dss_show_items(&info, items,user);
 
             goto menu;
         case '6':
@@ -147,7 +135,8 @@ int main(int argc, char const *argv[]) {
             goto menu;
     }
     dss_thanks();
-    puts("感谢您的使用, 程序将会在5秒后自动退出...");
+    puts("感谢您的使用, 程序将会在3秒后自动退出...");
+    dss_set_title("感谢您的使用, 程序将会在3秒后自动退出...");
     Sleep(3000);
     dss_clean();
     return 0;
@@ -191,7 +180,10 @@ void dss_print_panel(info_t *info, char *tips) {
     if (user == ADMIN) {
         printf("2.新建  \t\t\t");
         if (info->header_nums != 0) {
-            printf("3.保存  \n\n");
+            if (*file_path == '\0')
+                dss_colored_put("3.保存  \n\n", DISABLE_TEXT);
+            else
+                printf("3.保存  \n\n");
             dss_print_space(8);
             printf("4.另存为\t\t\t");
         } else {
